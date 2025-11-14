@@ -5,7 +5,10 @@ from pyro.infer.autoguide import AutoNormal
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import brier_score_loss
 from src.model import BayesianNN
 from src.data_loader import get_data
 from src.train import model_fn
@@ -40,12 +43,39 @@ def evaluate(x_test, y_test, model, guide):
     # Posterior predictive sampling
     bayes_mean, bayes_std = predict_with_uncertainty(model, guide, x_test)
 
+    sorted_indices = np.argsort(bayes_mean)
+    sorted_mean = bayes_mean[sorted_indices]
+    sorted_std = bayes_std[sorted_indices]
+    sorted_labels = np.array(y_test)[sorted_indices]
+
+    # Plot prediction intervals
+    plt.figure(figsize=(12, 6))
+    plt.plot(sorted_mean, label="Mean Prediction", color="blue")
+    plt.fill_between(
+        range(len(sorted_mean)),
+        sorted_mean - sorted_std,
+        sorted_mean + sorted_std,
+        color="blue",
+        alpha=0.3,
+        label="±1 Std Dev"
+    )
+    plt.plot(sorted_labels, label="True Labels", color="green", linestyle="--", alpha=0.6)
+    plt.title("Prediction Intervals with True Labels")
+    plt.xlabel("Sorted Sample Index")
+    plt.ylabel("Predicted Probability")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
     # Metrics
     acc = accuracy_score(y_test, bayes_mean > 0.5)
     auc = roc_auc_score(y_test, bayes_mean)
+    brier = brier_score_loss(y_test, bayes_mean)
 
     print(f"Accuracy (Bayesian): {acc:.4f}")
     print(f"ROC_AUC (Bayesian): {auc:.4f}")
+    print(f"Brier Score: {brier:.4f}")
 
     # Plot uncertainty
     plt.figure(figsize=(10, 5))
@@ -55,6 +85,26 @@ def evaluate(x_test, y_test, model, guide):
     plt.ylabel("Frequency")
     plt.grid(True)
     plt.show()
+
+    prob_true, prob_pred = calibration_curve(y_test, bayes_mean, n_bins=10)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(prob_pred, prob_true, marker='o', label='Bayesian Model')
+    plt.plot([0, 1], [0, 1], linestyle='--', color='gray', label='Perfect Calibration')
+    plt.xlabel("Predicted Probability")
+    plt.ylabel("True Frequency")
+    plt.title("Calibration Curve")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    df = pd.DataFrame({
+        "mean_pred":bayes_mean,
+        "std_pred": bayes_std,
+        "true_label": y_test
+    })
+    df.to_csv("outputs/predictions_with_uncertainty.csv", index=False)
 
 def main():
     X_train, X_test, y_train, y_test = get_data("data/preprocessed/patient_data.csv", target_column="disease_risk")

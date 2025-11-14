@@ -2,12 +2,14 @@ from src.data_loader import get_data
 from src.model import BayesianNN
 from src.train import train
 from src.evaluate import evaluate
+from src.interpret import explain_with_shap
 from src.config import DATA_PATH, TARGET_COLUMN
 from pyro.infer.autoguide import AutoNormal
 from pyro.infer import SVI, Trace_ELBO
 from pyro.optim import Adam
 from src.train import train, model_fn
 import torch
+
 def main():
     print("Loading data...")
     X_train, X_test, y_train, y_test = get_data(DATA_PATH, target_column=TARGET_COLUMN)
@@ -25,6 +27,8 @@ def main():
 
     print("Evaluating model...")
     evaluate(X_test, y_test, model, guide)
+
+    explain_with_shap(model, X_test)
 
 if __name__ == "__main__":
     main()
