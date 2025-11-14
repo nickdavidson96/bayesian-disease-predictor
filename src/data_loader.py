@@ -1,7 +1,7 @@
 # src/data_loader.py
 
 import pandas as pd
-from sklean.model_selection import train_test_split
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
 def load_data(path, target_column, dropna=True):
