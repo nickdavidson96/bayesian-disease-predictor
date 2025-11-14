@@ -3,7 +3,8 @@
 import os
 
 # Paths
-DATA_PATH = os.path.join("data", "processed", "patient_data.csv")
+DATA_PATH = os.path.join("data", "preprocessed", "synthetic_patient_data.csv")
+TARGET_COLUMN = "disease_risk"
 MODEL_SAVE_PATH = os.path.join("experiments", "run_001", "model.pt")
 
 # Training
